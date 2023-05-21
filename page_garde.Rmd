@@ -1,0 +1,27 @@
+---
+title: "| ![](UCLouvain - ecole-statistique.jpg){height=3in, width=3in}           \\hspace{2.1in}  ![](logo_fac_scien.png){height=0.7in, width=1.2in} \\vspace{1.1in} \n\\hrulefill \\vspace{0.2in} \n**LSTAT2200 ~ ECHANTILLONNAGE & SONDAGE** \n\n \\hrulefill \\vspace{1.2in}   \n\n  **~  Rapport Du Project Final  ~** \n  \\vspace{0.8in} "
+#subtitle: ""
+author: 
+- " **Mathias Dah Fienon** - _noma : 04452100_ - DATS2M \\vspace{1.3in}"
+date: "Année Académique : **2021-2022**"
+output: 
+  pdf_document: 
+    keep_tex: yes
+fontsize: 11pt
+---
+\pagenumbering{gobble}
+
+\hspace{2.1in}
+
+\begin{center}
+\begin{Large}
+
+Project Report -- LSTAT2170 : Times series analysis
+
+\end{Large} 
+ \end{center}
+
+\hspace{2.1in}
+\tableofcontents
+
+\pagenumbering{arabic}

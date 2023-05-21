@@ -1,0 +1,1032 @@
+---
+title: "\\hspace{2.1in}"
+subtitle: "Rapport du Projet "
+output:
+  pdf_document: 
+    #number_sections: yes
+    toc_depth: 7
+#    includes: 
+#      before-body: page_garde.tex
+header-includes:
+- \usepackage{fancyhdr}
+- \usepackage{graphicx}
+- \pagestyle{fancy}
+- \setlength{\headheight}{30pt}
+- \fancyfoot[L]{LSTAT2200 | \textit{Sampling}  }
+- \fancyhead[L]{\includegraphics[height=12mm,width=40mm]{UCLouvain - ecole-statistique.jpg}}
+- \fancyhead[R]{}
+- \fancyfoot[C]{\thepage}
+- \fancyfoot[R]{\textit{Mathias Dah Fienon}}
+- \usepackage{float}
+
+#include-before-body: page_garde.tex
+
+#mainfont: Garamond
+#fontsize: 12pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, fig.align = "center", echo = FALSE, include = TRUE, options(warn = -1))
+require(samplingbook)
+library(sampling)
+library(survey)
+library(ggplot2)
+theme_set(new = theme_bw())
+library(patchwork)
+require(latex2exp)
+```
+
+\newpage
+
+# \centering Introduction {.unnumbered}
+
+La réussite de toute entreprise nécessite une étude de faisabilité et aussi de rentablilité. C'est dans ce cadre que nous avons été contacté par les Ziroboudons du pays de Rêverose, pour la réalisation d'une étude de faibilité de leur projet d'horticulture. Notre mission ici est d'étudier les différentes caractéristiques des graines ainsi d'en dégager une estimation du prix de vente des fleurs issues desdites graines. Pour cela, nous disposons d'une base de données de toutes les graines et leurs caractéristiques mais pas d'information sur les prix de vente des fleurs. Ainsi, d'abord, nous étudierons la base de données afin de dégager des tendances de celle-ci. Ensuite nous posséderons à un premier échantillonnage pour évaluer les caractéristiques du prix des fleurs. Et enfin, en nous basant sur les informations de ce premier échantillon, nous sélectionnerons un second échantillon qui nous permettra de faire de réelle estimation sur le prix des fleurs et aussi de répondre aux préoccupations diverses des Ziroboudons. 
+
+
+# Présentation et description des données
+
+Cette section présentera une analyse descriptive de notre base de données afin de dégager un premier aperçu des relations au sein de nos données. 
+
+## Présentation générale des données
+
+```{r}
+data <- read.csv2("graines.csv", header = TRUE, sep = ",")
+
+data <- transform(data, 
+          X = NULL,  
+          Poids = as.numeric(Poids), 
+          Couleur = factor(Couleur),
+          Intensité = factor(Intensité),
+          Régularité = factor(Régularité)
+          )
+```
+
+La base de sondage à notre disposition est un stock de 121 346 graines, avec leurs caratéristiques : `r colnames(data)`.
+
+-   `r colnames(data)[1]`: le numéro d'identification de la graine, de 1 à 121 346
+
+-   `r colnames(data)[2]`: le poids de la graine, exprimé en carats (un carat vaut 0,2 grammes)
+
+-   `r colnames(data)[3]`: la couleur de la graine (bleu, rouge ou jaune)
+
+-   `r colnames(data)[4]`: l'intensité de la couleur de la graine. L'intensité est quantifiée par un nombre entier entre 1 et 5. Une note de 1 correspond à l'intensité minimale alors qu'une note de 5 correspond à l'intensité maximale (une couleur de faible intensité est une couleur mixte mélangée - une couleur de haute intensité est une couleur pure sans mélange)
+
+-   `r colnames(data)[5]`: la régularité de la forme de la graine. La régularité est quantifiée par un nombre entier entre 1 et 3. Les graines les moins régulières obtiennent une note de 1. La note de 3 est attribuée aux graines les plus régulières
+
+```{r}
+data |> 
+  head(10) |> 
+  #t() |> 
+  knitr::kable(caption = "Extrait de la base de sondage")
+```
+
+
+
+```{r}
+#View(data)
+```
+
+## Description des données
+
+Du tableau des statistiques descriptives des données, nous pouvons lire que le poids des graines varient de `r min(data$Poids)` carats à `r max(data$Poids)` carats pour une moyenne de `r round(mean(data$Poids),3)` carats et un poids médian de `r median(data$Poids)` carats.
+
+```{r}
+options(knitr.kable.NA = '')
+summary(data[,2:5]) |>
+  knitr::kable(caption = "Statistique descriptive de la base")
+
+```
+
+Une analyse de la répartition des poids en fonction de la couleur des graines, de l'intensité des couleurs et de la regularité des graines pourra nous permettre de bien mesurer la répartition des graines de notre stock.
+
+D'abord, voyons la répartition des graines en fonction des couleurs, de intensité des couleurs et aussi de la regularité des graines.
+
+```{r, eval=FALSE}
+vcd::doubledecker(Intensité~Régularité+Couleur, data, col = 1)
+```
+
+
+
+```{r, echo=FALSE}
+g <- table(data$Couleur) |> 
+  proportions() |> 
+  as.data.frame()  
+
+
+g1 <- ggplot(g)+
+  geom_col(aes(x =Var1 ,y = Freq*100), fill = "gray")+
+  labs( x = "", y = "", title = "Couleurs")+
+  geom_text(aes(x = Var1,y =Freq*100, label = paste0(round(Freq*100),"%")), vjust = 0, hjust = "center")+
+  theme(panel.grid.minor = element_blank(), 
+        strip.background = element_rect(fill = "white"))
+```
+
+
+```{r, echo=FALSE}
+h <- table(data$Intensité) |> 
+  proportions() |> 
+  as.data.frame()  
+
+
+g2 <- ggplot(h)+
+  geom_col(aes(x =Var1 ,y = Freq*100), fill = "gray",)+
+  labs( x = "", y = "", title = "Intensité")+
+  geom_text(aes(x = Var1,y =Freq*100, label = paste0(round(Freq*100),"%")), vjust = 0, hjust = "center")+
+  theme(panel.grid.minor = element_blank(), 
+        strip.background = element_rect(fill = "white"))
+
+```
+
+```{r, echo=FALSE}
+i <- table(data$Régularité) |> 
+  proportions() |> 
+  as.data.frame()  
+
+
+
+g3 <- ggplot(i)+
+  geom_col(aes(x =Var1 ,y = Freq*100), fill = "gray")+
+  labs( x = "", y = "",
+        title = "Regularite")+
+  geom_text(aes(x = Var1,y =Freq*100, label = paste0(round(Freq*100),"%")), vjust = 0, hjust = "center")+
+  theme(panel.grid.minor = element_blank(), 
+        #panel.ontop = element_text("Régularité"),
+        strip.background = element_rect(fill = "white"))
+
+```
+
+```{r}
+p1 <- ggplot(data)+
+  geom_violin(aes(x=Couleur, y = Poids, fill = Couleur, col = Couleur))+
+  geom_boxplot(aes(x = Couleur, y= Poids),width = 0.25, varwidth = TRUE, outlier.shape = NA, fill = NA)+
+  theme(legend.position = "top")+
+  labs(x = " ", subtitle = "Densité des poids en focntion des couleurs")
+
+p2 <- ggplot(data)+
+  geom_violin(aes(x = Intensité, y= Poids, fill = Intensité, col = Intensité))+
+  geom_boxplot(aes(x = Intensité, y= Poids),width = 0.25, varwidth = TRUE, outlier.shape = NA, fill = NA)+
+  theme(legend.position = "top")+
+  labs(subtitle = "Densité des poids en fonction de l'intensité des couleurs", x = "", y ="")
+
+p3 <- ggplot(data, aes(x = Régularité, y = Poids))+
+  geom_violin(aes(x = Régularité, y = Poids, fill = Régularité, col = Régularité ))+
+    geom_boxplot(width = 0.25, varwidth = TRUE, outlier.shape = NA, fill = NA) +
+  #geom_jitter(width = 0.1, height = 0, alpha = 0.2)+
+  theme(legend.position = "top")+
+  labs(subtitle = "Densité des poids en fonction de la forme des graines", x = "", y = "")
+```
+
+```{r}
+#p3
+```
+
+```{r, fig.width=12, fig.height=10, fig.cap="Répartition des graines en fonction de leurs caractéristiques"}
+
+g1+g2+g3+plot_layout(ncol = 2, nrow = 2)
+```
+
+L'analyse de la répartition des graines montre que :
+
+-   en fonction des couleurs, 39% des graines sont bleues, contre 27% et 34% pour les jaunes et les rouges respectivement.
+
+-   les graines d'une couleur pure sans mélange (intensité 5) représentent 40% de stock tandis que celles de couleur mixte mélangée (intensité minimale : 1) sont seulement 3% du stock.
+
+-   quant à la regularité des graines, 45% sont de forme moins régulière pour 23% qui sont de forme de forme plus régulières. Les autres (31%) sont de forme intermédiaire.
+
+Au vue de cette repartition de notre stock, il sera bien de savoir le lien qui pourrait exister entre la couleur des graines, leurs intensités, la forme de ces graines et aussi la répartition du poids des graines au sein de ces caractéristiques. Cette étude est représentée dans les graphiques (Figure 2) suivantes :
+
+
+```{r, fig.width=10, fig.height=7, fig.cap="Analyse croisée de couleur, intensité et regularité"}
+m1 <- ggplot(data)+
+  geom_bar(aes(x = Intensité, fill = Couleur), position = "fill")+
+  theme(legend.position = "top")+
+  labs(y = "", x = "",title = "Répartion des couleurs entre les intensités")
+
+m2 <- ggplot(data)+
+  geom_bar(aes(x = Régularité, fill = Couleur), position = "fill")+
+  theme(legend.position = "top")+
+  labs(y="", x = "", title = "Répartition des couleurs entre les formes")
+m3 <- ggplot(data)+
+  geom_bar(aes(x = Intensité, fill =Régularité ), position = "fill")+
+  theme(legend.position = "top")+
+  labs(y="", x = "", subtitle = "Répartition des intensités entre les formes")
+```
+
+```{r, fig.width=12, fig.height=16, fig.cap="Analyse croisée de couleur, intensité, regularité et poids"}
+m1+m2+m3+p1+p2+p3 +plot_layout(nrow = 3)
+```
+
+
+Des graphiques de la figure 2, il convient de retenir :
+
+-   la distribution de la couleur, de l'intensité des couleurs et de la forme de la graine est identique au sein des différents groupes. Ceci s'observe sur les graphiques en barre par l'égalité des proportions au sein des groupes (des graphiques en barre qui sont plats). En conséquence, il y a une *independance mutuelle* entre les caractéristiques : couleur de la graine, intensité de la couleur de la graine et la forme de la graine.
+
+-   quant à la distribution du poids au sein des caractéristiques *couleur de la graine* et *regularité de la graine*, en observant les courbe des densité du poids entre les différentes couleurs et entre les forme de la graine, on a tendance à dire que ces courbes sont identiques. Ce fait est confirmé par les caractéristiques de boites à moustache. En effet, lesdites boites à moustache présentent les mêmes quartiles. Ce qui nous permet de conclure que la distribution du poids des graines au sein des caractéristiques *couleur* et *regularité de la graine* est homogène.
+
+-   Pour ce qui est de l'intensité des couleurs, le graphique de la densité des poids en fonction de cette dernière montre que la distribution du poids n'est pas homogène au sein des modalités de cette caractéristique. Une analyse de la variance pourra nous conforter dans cette position.
+
+```{r}
+options(knitr.kable.NA = '')
+v <- lm(Poids~Intensité, data = data)
+anova(v) |> 
+  knitr::kable(caption = "Analyse de la variance du poids au sein de la caractéristiques Intensité")
+```
+
+Le tableau 3 ci-dessus, confirme bien que la distribution du poids n'est pas homogène au sein de la caractéristique *Intensité de la couleur des graines* (p-value \< 5%)
+
+```{r, include=FALSE,echo=FALSE}
+ggplot(data)+
+  geom_density(aes(x = Poids), fill = "lightgray", color = "lightgray")
+```
+
+```{r, include=FALSE,cache=TRUE}
+ggplot(data, aes(x = Intensité, y =Poids ))+
+  #geom_boxplot(aes(color = Intensité))+
+  geom_violin(aes(color =Intensité, fill = Intensité), show.legend = FALSE)
+  #geom_jitter(aes(x = Intensité, y= Poids), width = 0.1, alpha = 0.1, col = "gray")
+```
+
+
+```{r, include=FALSE}
+xtabs(~Couleur+Régularité, data = data) |> 
+  round(2)|> 
+  proportions(1)*100 #|> 
+  #knitr::kable()
+ 
+```
+
+```{r, fig.width=6, include=FALSE}
+#spineplot(~Couleur+Régularité, data, col = c("red", "yellow", "blue"))
+vcd::doubledecker(Couleur~Régularité, data)
+```
+
+```{r}
+#vcd::doubledecker(Régularité~Couleur, data)
+```
+
+# Methodologie d'échantillonnage 
+
+```{r, echo=FALSE}
+n <- 400
+
+N <- dim(data)[1]
+
+nh <- n/N *table(data$Couleur)
+
+nh <- round(nh, 0)
+```
+
+Afin de répondre aux préoccupations des Ziroboudons, nous avons besoin des informations sur le prix de vente des fleurs produites par les graines. Pour cela, nous devons constituer un premier echantillon. Ce premier echantillon nous permettra de récolter des informations principalement sur le prix de vente des fleurs. Alors quelles seront les caractéristiques de ce premier échantillon ?
+
+Pour la sélection du premier echantillon, partant des informations dont nous disposons : *contraintes budgétaires*, *catégorisation des graines* en trois groupes selon la couleur des graines, la *différence entre les prix d'achat des graines* et aussi le *coût de plantation d'une graines*, nous stratifierons la base de sondage en fonction de la couleur des graines. Cette stratification nous permettra de recolter les informations nécessaires et de parfaire le second echantillon qui constituera la base même de notre analyse pour répondre aux questions des Ziroboudons. Aussi, nous décidons d'allouer une montant maximal de *3000 euros* à cette étude préliminaire.
+
+## Sélection et étude du premier echantillon
+
+### Sélection de l'échantillon_1
+
+Notre base de sondage est stratifiée en trois strates : $U_j, U_b, U_r$ pour respectivement la strate des graines Jaunes, des Bleues et des Rouges. Au sein de chacune des strates, nous allons prélever de façon aléatoire et sans remise un échantillon de taille $n=$ `r n` soit donc un taux de sondage de `r round(sum(nh)/dim(data)[1],3)`. Nos $n=$ `r n` graines seront prélevées **proportionnellement** au sein de chaque strate. Ainsi, nous prélevons un nombre $n_h$ avec $h \in \{j,b,r\}$ de graine au sein des strates avec un taux de sondage $f_h =$ `r round(sum(nh)/dim(data)[1],4)`. Nous avons donc : \begin{align*}
+n_j = `r nh[1]`\hspace{1.5in}
+n_b = `r nh[2]`\hspace{1.5in}
+n_r = `r nh[3]`
+\end{align*}
+
+Pour connaitre le prix de vente des fleurs produites par ces graines, nous devons d'abord:
+
+-   acheter ces graines (les prix étant de 6 euros pour une graine jaune, contre respectivement 5 et 7 euros pour une graine bleue et une graine rouge) et ensuite
+
+-   les planter (le prix de plantation des graines 1 euros chacune des graines).
+
+```{r}
+set.seed(2022)
+Sample <- sampling::strata(data,
+stratanames = c("Couleur"), size = nh, method = "srswor"
+)
+Echant1 <- sampling::getdata(data, Sample)
+#View(Echant1)
+```
+
+Ainsi, ce premier échantillon que nous constituons nous coûte : `r sum(table(Echant1$Couleur) * c(6,7,8))` euros
+
+Auprès de ce premier échantillon de $400$ graines dont `r nh[1]` jaunes, `r nh[2]` bleues et `r nh[3]` rouges, nous allons nous intéresser à la distribution du prix des fleurs produites par lesdites graines.
+
+```{r, eval=FALSE}
+set.seed(2022)
+Sample <- sampling::strata(data,
+stratanames = c("Couleur"), size = nh, method = "srswor"
+)
+Echant1 <- sampling::getdata(data, Sample)
+View(Echant1)
+```
+
+```{r, eval=FALSE}
+write.csv2(Echant1, file = "echantillon_1.csv")
+```
+
+```{r, include=FALSE}
+table(Echant1$Couleur)
+```
+
+```{r, include=FALSE}
+sum(table(Echant1$Couleur) * c(6,7,8))
+```
+
+
+```{r}
+sampl1 <- read.csv("E1_Mathias_Dah_Fienon.csv", header = TRUE, sep = ",")
+sampl1 <- transform(sampl1, 
+          X = NULL,  
+          Poids = as.numeric(Poids), 
+          Couleur = factor(Couleur),
+          Intensité = factor(Intensité),
+          Régularité = factor(Régularité)
+          )
+```
+
+ 
+
+```{r, eval=FALSE}
+View(sampl1)
+```
+
+
+###  Etude de l'échantillon_1
+
+* **Repartition du Prix**
+
+
+D'abord analysons le tableau d'analyse descriptive du prix des fleurs et l'histogramme de la distribution de ce prix au sein des 400 graines sélectionnées.
+
+```{r, eval=FALSE}
+summary(sampl1$Prix) #|> 
+  #knitr::kable(caption = "Statistiques descriptives du prix des fleurs dans Echantillon_1 ")
+
+
+#aggregate(Prix~Intensité, sampl1, FUN = summary ) #|> 
+  #knitr::kable(caption = "Distribution du prix dans l'échantillon 1")
+```
+
+
+| Min. |1st Qu.|Median | Mean|3rd Qu.| Max.  |
+|------|-------|-------|-----|-------|-------|
+| 12.69 |33.7  |44.31  |47.43|58.31  |118.35 |
+
+: Statistiques descriptives du prix des fleurs dans Echantillon_1
+
+
+```{r,fig.width=10, fig.height=5}
+see <- shapiro.test(sampl1$Prix)
+de <- ggplot(sampl1, aes(x = Prix))+
+  geom_histogram(aes(y = ..density..) ,bins = 9, fill = "gray", col = "white")+
+  geom_density(col = "red")+
+  labs(subtitle = "Histogram of flowers Price\n and density curves")
+
+qq <- ggplot(data = sampl1, aes(sample = Prix))+
+  geom_qq(col = "gray")+
+  geom_qq_line(col = "red")+
+  labs(title = "Normality Test (Shapiro-Wilk)",
+       subtitle = paste0("p-value:",round(see$p.value,11),"\nstatistics : ", 
+                        round(see$statistic,3)) , x = "Theorical sample", y = "Sample quantile")
+
+de + qq +plot_layout(nrow = 1, ncol = 2)
+```
+
+Au travers de l'histogramme du prix des fleurs, nous remarquons que les prix s'étant de $12\ euros$ à $120\ euros$ environ avec une classe modale $[35;45]$ et un prix moyen de $47.43\ euros$. 
+Une idée serait de voir si cette distribution pourrait correspondre à une distribution normale. Visuellement, à partir de la courbe de densité, on voit que non. Néanmons, confirmons cette assertion à travers le qqplot. Ce dernier montre bien que les quantiles du Prix ne s'alignent pas avec celles d'une normale. Ceci est aussi confirmé par les résultats du test de normalité basé sur le test de `Shapiro-Wilk`.  
+
+* **Distribution du Prix des fleurs en fonction des caractéristiques des graines**  
+
+
+
+```{r, fig.width=10, fig.height=10, fig.cap="Distribution du Prix en fonction des caractéristiques des graines", warning=FALSE, message=FALSE}
+
+# Etude de la couleur
+cou_fit <- lm(Prix~Couleur, sampl1)
+bn <- anova(cou_fit)
+cou <- ggplot(data = sampl1)+
+  geom_boxplot(aes(y =Prix ,x = Couleur), varwidth = TRUE, col= c("blue", "yellow", "red"))+
+  stat_summary(aes(y =Prix ,x = Couleur), fun ="mean", col= c("blue", "yellow", "red"), shape = 2)+
+  labs(subtitle = paste("Egalité des moyennes :\np-value : ", round(bn$`Pr(>F)`[1],3), "\nNon Rejet égalité de moyennes "))
+
+
+# Etude de l'intensité
+Int_fit <- lm(Prix~Intensité, sampl1)
+bn1 <- anova(Int_fit)
+inte <- ggplot(data = sampl1)+
+  geom_boxplot(aes(y =Prix ,x = Intensité, col = Intensité), varwidth = TRUE, show.legend = FALSE)+
+  stat_summary(aes(y =Prix ,x = Intensité, col = Intensité), fun = "mean", shape = 2, show.legend = FALSE)+
+  labs(subtitle = paste("Egalité des moyennes :\np-value : ", round(bn1$`Pr(>F)`[1],3), "\nRejet égalité de moyennes"), y = "")
+
+
+
+# Etude de la régularité
+reg_fit <- lm(Prix~Régularité, sampl1)
+bn2 <- anova(reg_fit)
+reg <- ggplot(data = sampl1)+
+  geom_boxplot(aes(y =Prix ,x = Régularité, col = Régularité), varwidth = TRUE, show.legend = FALSE)+
+  stat_summary(aes(y =Prix ,x = Régularité, col = Régularité), fun = "mean", shape = 2, show.legend = FALSE)+
+  labs(subtitle = paste("Egalité des moyennes :\np-value : ", round(bn2$`Pr(>F)`[1],3), "\nNon Rejet égalité de moyennes"),  y = "")
+
+
+
+cou + inte + reg + plot_layout(nrow = 2, ncol =2)
+```
+
+L'étude du graphique de la distribution du Prix en fonction des caractéristiques des graines montre qu'au sein de notre Echantillon_1, le prix moyen des fleurs est d'environ `47 euros`. Ce prix reste invariant que la graine soit d'une couleur ou d'une autre ou d'une régularité à une autre. Cependant, le prix de la fleur restent dépendant de l'intensité de la graine. En effet, au sein de la caractéristique _intensité de la couleur de la graine_, le prix varie fortement d'un sous-groupe à un autre.
+
+Observons à présent le lien entre le prix de la fleur et le poids de la graine (Figure 4).
+
+
+```{r}
+ok <- summary(lm(Prix~Poids, sampl1))
+poi <- ggplot(sampl1, aes(x = Poids, y = Prix))+
+  geom_point(col = "gray")+
+  geom_smooth(aes(x = Poids, y = Prix), formula = y~x,method = "lm", se = FALSE, col = 4)+
+  #facet_wrap(vars (Régularité))
+  labs(subtitle = paste("R-squared =", round(ok$r.squared,3), "& corr =", round(cor(sampl1$Prix, sampl1$Poids),3)),
+       title = "overall Prix vs overall Poids")
+
+poi_in1 <- ggplot(subset(sampl1, Intensité ==  "1"), aes(x = Poids, y = Prix))+
+  geom_point(alpha = 0.5, show.legend = FALSE, col = 1)+
+  geom_smooth(aes(x = Poids, y = Prix), formula = y~x,method = "lm", se = FALSE, show.legend = FALSE, col = "gray")+
+  #facet_wrap(vars (Intensité), labeller = "label_both")+
+  labs(title = "Intensité = 1", 
+       subtitle = paste("corr =", round(cor(subset(sampl1, Intensité ==  "1")$Prix, subset(sampl1, Intensité ==  "1")$Poids),3)),y="")
+
+
+poi_in2 <- ggplot(subset(sampl1, Intensité ==  "2"), aes(x = Poids, y = Prix))+
+  geom_point(alpha = 0.5, show.legend = FALSE, col = 2)+
+  geom_smooth(aes(x = Poids, y = Prix), formula = y~x,method = "lm", se = FALSE, show.legend = FALSE, col = "gray")+
+  #facet_wrap(vars (Intensité), labeller = "label_both")+
+  labs(title = "Intensité = 2", 
+       subtitle = paste("corr =", round(cor(subset(sampl1, Intensité ==  "2")$Prix, subset(sampl1, Intensité ==  "2")$Poids),3)),y="")
+
+poi_in3 <- ggplot(subset(sampl1, Intensité ==  "3"), aes(x = Poids, y = Prix))+
+  geom_point(alpha = 0.5, show.legend = FALSE, col = 3)+
+  geom_smooth(aes(x = Poids, y = Prix), formula = y~x,method = "lm", se = FALSE, show.legend = FALSE, col = "gray")+
+  #facet_wrap(vars (Intensité), labeller = "label_both")+
+  labs(title = "Intensité = 3", 
+       subtitle = paste("corr =", round(cor(subset(sampl1, Intensité ==  "3")$Prix, subset(sampl1, Intensité ==  "3")$Poids),3)),y="")
+
+poi_in4 <- ggplot(subset(sampl1, Intensité ==  "4"), aes(x = Poids, y = Prix))+
+  geom_point(alpha = 0.5, show.legend = FALSE, col = 4)+
+  geom_smooth(aes(x = Poids, y = Prix), formula = y~x,method = "lm", se = FALSE, show.legend = FALSE, col = "gray")+
+  #facet_wrap(vars (Intensité), labeller = "label_both")+
+  labs(title = "Intensité = 4", 
+       subtitle = paste("corr =", round(cor(subset(sampl1, Intensité ==  "4")$Prix, subset(sampl1, Intensité ==  "4")$Poids),3)),y="")
+
+poi_in5 <- ggplot(subset(sampl1, Intensité ==  "5"), aes(x = Poids, y = Prix))+
+  geom_point(alpha = 0.5, show.legend = FALSE, col = 5)+
+  geom_smooth(aes(x = Poids, y = Prix), formula = y~x,method = "lm", se = FALSE, show.legend = FALSE, col = "gray")+
+  #facet_wrap(vars (Intensité), labeller = "label_both")+
+  labs(title = "Intensité = 5", 
+       subtitle = paste("corr =", round(cor(subset(sampl1, Intensité ==  "5")$Prix, subset(sampl1, Intensité ==  "5")$Poids),3)),y="")
+
+```
+
+
+```{r,  fig.cap="Prix et Poids de la graine", fig.width=12, fig.height=16}
+poi+poi_in1+poi_in2+poi_in3+poi_in4+poi_in5+plot_layout(nrow = 3, ncol = 2)
+```
+
+De ce graphique, on retient que le prix de la fleur et le poids de la graine liée à ladite fleurs sont liés par une relation linéaire avec un coefficient de corrélation linéaire évalué à `r round(cor(sampl1$Prix, sampl1$Poids), 3)`.
+Quant à la distribution du prix et du poids en fonction de l'intensité de la couleur des graines, on remarque que la liaison linéaire est toujours présentes.
+
+En somme, avec ce premier échantillon, on retient que la variable d'intérêt qu'est le prix de la fleur est liée fortement  au poids et qu'elle varie en fonction de l'intensité de la couleur de la graine ayant produit cette fleur. En effet, plus l'intensité de la couleur de la graine est élévée, plus la fleur produites par cette graine est vendu à un prix élévé.
+
+Ainsi, pour la constitution de notre second échantillon, on privilégera une stratification optimale en fonction de l'intensité de la couleur de la graine. En effet, ce que nous recherchons, c'est d'avoir des strates assez homogènes du point de vue de l'intensité des graines de ladite strate et donc avec une variance du prix de la fleur assez faible.
+
+Pour cette stratification, nous avons besoin de la variance au sein de chacune des strates de notre variable d'intérêt: le prix de la fleur. Ne connaissant pas cette variance au sein de la population des graines, nous nous contenterons de son _estimation_^[Notons aussi que puisque le prix de la fleur et le poids des graines présentent une forte correlation, on pourrait aussi utiliser les variances de cette variable en lieu et place de celle du prix de la fleur.] à base de notre premier echantillon : _Enchantillon_1_. Ceci est résumé dans le tableau suivant.
+
+```{r}
+aggregate(Prix~Intensité, sampl1, FUN = sd) |> 
+  t() |> 
+  knitr::kable(caption = "Ecart-type estimé du prix au sein des categories de l'intensité des graines ", align = "c")
+```
+
+Rappelons aussi que pour notre premier échantillon, nous avons dépensé $2850\ euros$ et donc nous disposons de maximum $12150\ euros$ pour la réalisation de ce second echantillon; sachant en effet que les graines coûtent (achat et plantation) : $c_j = 7\ euros;\ c_b = 6\ euros;\ c_r = 8\ euros$. 
+
+
+```{r}
+data_reste <- data[!(data$Id %in% sampl1$Id),]
+```
+
+```{r, eval=FALSE}
+as.vector(ToSample[2, ])
+```
+
+
+```{r selec_E_2}
+set.seed(2022)
+data_reste2 <- data_reste[order(data_reste$Intensité),]
+e2_Nh <- as.numeric(table(data$Intensité))
+e2_sh <- aggregate(Prix~Intensité, sampl1, FUN = sd)[,2]
+#e2_Nh <- c(3621,10980,27308,31057,48380)
+ToSample <- stratasamp(1750, e2_Nh, e2_sh, type = "opt")
+Sample2_2 <- sampling::strata(data_reste2,
+                              stratanames = c("Intensité"),
+                              size = as.vector(ToSample[2, ]),
+                              method = "srswor")
+sample2 <- getdata(data_reste2, Sample2_2)
+```
+
+
+
+```{r, eval=FALSE}
+write.csv2(sample2, "echantillon_2.csv")
+```
+
+```{r, eval=FALSE}
+View(sample2)
+```
+
+
+
+```{r, eval=FALSE}
+set.seed(2022)
+
+e2_Nh <- as.numeric(table(data$Intensité))
+pe2_sh <- aggregate(Prix~Intensité, sampl1, FUN = sd)[,2]
+ToSample2 <- stratasamp(1750, ke2_Nh, pe2_sh, type = "opt")
+pSample2_2 <- sampling::strata(data,
+stratanames = c("Intensité"), size = as.vector(ToSample2[2, ]),
+method = "srswor"
+)
+#psample2 <- getdata(data, pSample2_2)
+```
+
+
+```{r, eval=FALSE}
+table(sample2$Couleur)
+```
+
+
+```{r, eval=FALSE}
+sum(table(sample2$Couleur) * c(6,7,8))
+```
+
+```{r, eval=FALSE}
+table(psample2$Intensité)
+```
+
+
+```{r, eval=FALSE}
+sum(table(psample2$Couleur) * c(6,7,8))
+```
+
+```{r, eval=FALSE}
+table(sample2$Intensité)
+```
+
+
+```{r, eval=FALSE}
+aggregate(Prix~Intensité, sampl1, FUN = sd)[2]
+```
+
+```{r, eval=FALSE}
+xtabs(~Couleur, sample2)
+```
+
+
+```{r, eval=FALSE}
+xtabs(~Intensité+Couleur, data)
+```
+
+```{r, eval=FALSE}
+xtabs(~Intensité+Couleur, sample2)
+```
+
+
+
+
+```{r, eval=FALSE}
+ggplot(data = sampl1)+
+  geom_boxplot(aes(y =Prix ,x = Régularité, color = Régularité), varwidth = TRUE, show.legend = FALSE)+
+  facet_wrap(vars(Intensité))
+```
+
+
+```{r, eval=FALSE}
+ggplot(sampl1)+
+  geom_point(aes(x = Poids, y = Prix))+
+  facet_wrap(vars(Régularité))+
+  geom_smooth(aes(Poids,y =Prix ), method = "lm", se = FALSE)
+```
+
+
+
+```{r, eval=FALSE}
+summary(lm(Prix~Couleur*Intensité*Régularité, sampl1))
+```
+
+
+\newpage
+## Sélection et étude du second echantillon
+
+
+### Methode de sélection du second échantillon
+
+```{r}
+sampl2 <- read.csv("E2_Mathias_Dah_Fienon.csv", header = TRUE, sep = ",")
+sampl2 <- transform(sampl2, 
+          X = NULL,  
+          Poids = as.numeric(Poids), 
+          Couleur = factor(Couleur),
+          Intensité = factor(Intensité),
+          Régularité = factor(Régularité)
+          )
+```
+
+
+```{r}
+fleur_bleue <- subset(sampl2, Couleur == "Bleu")
+fleur_jaune <- subset(sampl2, Couleur == "Jaune")
+fleur_rouge <- subset(sampl2, Couleur == "Rouge")
+intensity1 <- subset(sampl2, Intensité == 1)
+intensity2 <- subset(sampl2, Intensité == 2)
+intensity3 <- subset(sampl2, Intensité == 3)
+intensity4 <- subset(sampl2, Intensité == 4)
+intensity5 <- subset(sampl2, Intensité == 5)
+regularity1 <- subset(sampl2, Régularité == 1)
+regularity2 <- subset(sampl2, Régularité == 2)
+regularity3 <- subset(sampl2, Régularité == 3)
+```
+
+De l'ensemble des analyses précédentes, nous avons vu que le prix de la fleur varie en fonction de l'intensité de la graine donnant ladite fleur. Ainsi, nous avons décidé de concevoir notre second échantillon en nous appuyant sur cette information. Et donc, nous avons stratifié à nouveau les graines restantes de notre base de données en fonction de _l'intensité de la couleur des graines_. Ensuite, étant donné que l'objectif est l'estimation des prix des fleurs, nous avons procédé à une stratification optimale pour sélection les graines devant constituer notre second échantillon. Le but étant bien sûr d'avoir une variance minimale pour l'estimateur du prix moyen des fleurs. Aussi, ne disposant pas de la variance des prix au niveau population, nous avons utilisé les estimations obtenues à partir de notre premier échantillon. 
+
+Ainsi donc, notre premier échantillon nous a permis de récolter des informations pour mieux constituer notre second échantillon. C'est sur ce dernier que nous allons nous baser pour répondre aux préoccupations des Ziroboudons. 
+
+Une première choses à revérifier est de savoir si le budget fournit par les Ziroboudons est bien  respecté avec notre stratégie de sondage :  
+
+| Couleur | Bleue | Jaune | Rouge | Total |
+|---------|-------|-------|-------|-------|
+| Taille  |  `r nrow(fleur_bleue)`  | `r nrow(fleur_jaune)`   | `r nrow(fleur_rouge)`   | `r nrow(sampl2)`  |
+|  Coût (en euros)   | `r nrow(fleur_bleue)*6`  | `r nrow(fleur_jaune)*7`  | `r nrow(fleur_rouge)*8`  |12130  |
+: Coût du second échantillon
+
+
+Et bien evidemment, avec notre stratégie de sélection du second échantillon de taille $n=$ `r nrow(sampl2)`, nous respectons notre budget (2850 euros pour constituer l'echantillon_1 et 12150 euros pour l'échantillon_2) avec 20 euros restant.
+
+```{r, eval=FALSE}
+sum(xtabs(~Couleur, sampl2)*c(6,7,8))
+```
+
+```{r, eval=FALSE}
+sum(xtabs(~Couleur, data)*c(6,7,8))
+```
+
+
+### Etude du second échantillon
+
+Notre second échantillon est un échantillon de taille `r nrow(sampl2)` graines. Etant donné que nous avons opté pour une stratification optimale selon l'intensité de la couleur des graines, voyons aussi la taille de nos strates et les taux de sondages y associés.
+
+Soit donc $U_h$ la strate associées à la catégories des graines d'intensité $h$ avec $h \in \{1,2,3,4,5\}$
+
+|Intensité|1    |2    |3    |4    |5    |
+|---------|-----|-----|-----|-----|-----|
+|$N_h$   |3621 |10980|27308|31057|48380|
+|$n_h$   |`r nrow(intensity1)`   |`r nrow(intensity2)`  |`r nrow(intensity3)`  |`r nrow(intensity4)`  |`r nrow(intensity5)`  |
+|$f_h$   |`r round(nrow(intensity1)/3621,4)`   |`r round(nrow(intensity2)/10980,4)`  |`r round(nrow(intensity3)/27308,4)`  |`r round(nrow(intensity4)/31057,4)`  |`r round(nrow(intensity5)/48380,4)`|
+: Taux de sondage pour Echantillon_2
+
+
+```{r, eval=FALSE}
+round(xtabs(~Intensité, sampl2)/xtabs(~Intensité, data),4)
+#sum(xtabs(~Intensité, data))
+```
+
+
+
+
+
+
+\newpage
+
+**Analyse description**
+
+Commençons alors par une analyse description de notre second échantillon.
+
+```{r}
+options(knitr.kable.NA = '')
+summary(subset(sampl2, select = -Id)) |> 
+  #round(2) |> 
+  knitr::kable(caption = "Satistique description de Echantillon_2")
+```
+
+En effet, le prix moyen des fleurs de notre second échantillon est `r round(mean(sampl2$Prix),2)` $euros$ avec écart-type de `r round(sd(sampl2$Prix),3)` $euros$. Rappelons que ce prix moyen était de `r round(mean(sampl1$Prix),2)` $euros$ dans l'échantillon_1 avec un écart-type estimé de `r round(sd(sampl1$Prix),3)` $euros$. Aussi un rapide t.test permet d'avoir une idée de la significativité de la différence entre les deux échantillons. En effet, la p-value du test de la comparaison des deux moyennes est **`r round(t.test(sampl1$Prix, sampl2$Prix)$p.value,3)`** ; cette dernière étant supérieure au seuil $\alpha =5\%$ , on ne rejettera pas l'hypothèse d'égalité des moyennes de nos deux échantillons.
+
+Interessons nous maintenant à la distribution du prix des fleurs au sein des caractéristiques des graines.
+
+**Distribution du prix des fleurs en fonction des caractéristiques des graines**
+
+
+```{r, fig.width=12, fig.height=16, fig.cap="Densité du prix au sein des différents groupes de graines"}
+
+voyon <- anova(lm(Prix~Couleur, sampl2))
+voyon1 <- anova(lm(Prix~Régularité, sampl2))
+voyon2 <- anova(lm(Prix~Intensité, sampl2))
+
+s0 <- ggplot(sampl2)+
+  geom_density(aes(x = Prix), col = 2, fill = "orange", alpha = 0.1, size = 0.3)+
+  theme(legend.position = c(0.78, 0.65))+
+  labs(subtitle = "Densité du prix au sein de Echantillon_2",
+       y = "")
+  
+
+
+s1 <- ggplot(sampl2)+
+  geom_density(aes(x = Prix, col = Intensité),  alpha = 0.1, size = 0.3)+
+  theme(legend.position = c(0.78, 0.65))+
+  labs(subtitle = "Densité du prix des fleurs en fonction de l'intensité\n de la graine",
+       y = "")
+
+s2 <- ggplot(sampl2)+
+  geom_density(aes( x = Prix, col = Couleur), alpha = 0.1, size = 0.3)+
+  theme(legend.position = c(0.78, 0.65))+
+  labs(title = "Densité du prix des fleurs en fonction\n des couleurs de la graine",
+       y = "")
+
+s3 <- ggplot(sampl2)+
+  geom_density(aes( x = Prix, col = Régularité), alpha = 0.1, size = 0.3)+
+  theme(legend.position = c(0.78, 0.65))+
+  labs(title = "Densité du prix des fleurs en fonction\n de la régularité de la graine",
+       y = "")
+
+
+a1 <- ggplot(sampl2)+
+  geom_boxplot(aes(x = Couleur,y = Prix, col = Couleur), varwidth = TRUE, show.legend = FALSE)+
+  stat_summary(aes(x = Couleur,y = Prix, col = Couleur), fun = "mean", shape = 1, show.legend = FALSE)+
+  annotate("text", label = TeX(paste0("$mu_b$ = ", round(mean(fleur_bleue$Prix),2))), x = 1 , y =3)+
+  annotate("text", label = TeX(paste0("$mu_j$ = ", round(mean(fleur_jaune$Prix),2))), x = 2 , y =3)+
+  annotate("text", label = TeX(paste0("$mu_r$ = ", round(mean(fleur_rouge$Prix),2))), x = 3 , y =3)+
+  labs(title = TeX(paste0("$mu_b=mu_j=mu_r$ ?")),
+       subtitle = paste0("p-value of anova = ", round(voyon$`Pr(>F)`[1],7), "\nDécision : Rejet de l'hypothèse d'égalité\n des moyennes"))
+
+
+a2 <- ggplot(sampl2)+
+  geom_boxplot(aes(x = Régularité,y = Prix, col =Régularité), varwidth = TRUE, show.legend = FALSE, xlim = c(0, 5))+
+  stat_summary(aes(x = Régularité,y = Prix, col =Régularité), fun = "mean", shape = 1, show.legend = FALSE)+
+  annotate("text", label = TeX(paste0("$mu_1$ = ", round(mean(regularity1$Prix),2))), x = 1 , y =3)+
+  annotate("text", label = TeX(paste0("$mu_2$ = ", round(mean(regularity2$Prix),2))), x = 2 , y =3)+
+  annotate("text", label = TeX(paste0("$mu_3$ = ", round(mean(regularity3$Prix),2))), x = 3 , y =3)+
+  #annotate("text", x = 3.5, y = 125, label = )+
+  labs(title = TeX(paste0("$mu_1=mu_2=mu_3$ ?")),
+       subtitle = paste0("p-value of anova = ", round(voyon1$`Pr(>F)`[1],3), "\nDécision : Non rejet de l'hypothèse d'égalité\n des moyennes"))
+
+a3 <- ggplot(sampl2)+
+  geom_boxplot(aes(x = Intensité,y = Prix, col =Intensité), varwidth = TRUE, show.legend = FALSE)+
+  stat_summary(aes(x = Intensité,y = Prix, col =Intensité), fun = "mean", shape = 1, show.legend = FALSE)+
+  annotate("text", label = TeX(paste0("$mu_1$ = ", round(mean(intensity1$Prix),2))), x = 1 , y =3)+
+  annotate("text", label = TeX(paste0("$mu_2$ = ", round(mean(intensity2$Prix),2))), x = 2 , y =3)+
+  annotate("text", label = TeX(paste0("$mu_3$ = ", round(mean(intensity3$Prix),2))), x = 3 , y =3)+
+  annotate("text", label = TeX(paste0("$mu_4$ = ", round(mean(intensity4$Prix),2))), x = 4 , y =3)+
+  annotate("text", label = TeX(paste0("$mu_5$ = ", round(mean(intensity5$Prix),2))), x = 5 , y =3)+
+  labs(title = TeX(paste0("$mu_1=mu_2=mu_3=mu_4=mu_5$ ?")),
+       subtitle = paste0("p-value of anova = ", round(voyon2$`Pr(>F)`[1],9), "\nDécision : Rejet de l'hypothèse d'égalité\n des moyennes"))
+
+s0+s1+s2+s3+a1+a2+plot_layout(nrow = 3)
+```
+
+A la lecture du graphique, on peut remarquer que la distribution (fonction de densité) globale du prix des fleurs au sein des caractéristiques des graines (sauf pour l'intensité de la couleur des graines) semblent s'apparenter. Mais est-ce vraiment le cas? 
+Pour répondre à cette question, allons en profondeur de nos données.
+D'abord, jettons un coup d'oeil aux boxplots avec les positions relatives des moyennes (le petit cercle au milieu des boxplots) de chaque catégories des caractéristiques des graines. 
+
+On retient bien que :
+
+* **Couleur des graines**
+
+Les prix moyens au sein des différentes couleurs de la graine sont bien différents. En effet, les graines de couleur jaune apparaissent comme celles produisant des fleurs dont le prix de vente moyen est supérieur  aux prix de vente moyens des fleurs produites par les deux autres couleurs. Pendant ce même temps, le test de comparaison du prix moyen des fleurs produites par les graines _bleues_ et _rouges_ laisse conclure que ces prix ne sont pas significativement différents l'un de l'autre : $p.value\ _{(H_o: \ \mu_b=\mu_r)} =0.52$ (>5%).
+
+* **Intensité de la couleur des graines**
+
+En analysant l'intensité de la couleur des graines en relation avec le prix de vente des fleurs produites par ces graines, la comparaison des prix moyens des 5 catégories résulte en un rejet de l'hypothèse d'égalité des 5 moyennes. Et donc, il y a bien un lien significatif entre l'intensité de la couleur d'une graine et le prix auquel la fleur produites par cette graine est vendu. 
+Ainsi, en analysant plus en détails, les graines appartenant à la catégorie d'intensité **4** et **5** présentent les prix moyens les plus élévés.En effet, plus la graine a une couleur pure sans mélange, plus la fleurs qu'elle produit est vendue plus chère.
+
+
+* **Régularité de la forme des graines**
+
+Pour ce qui concerne la régularité, on retiendra que le prix des fleurs produites restent relativement identitquement distribué au sein des catégories. En d'autres termes, la _régularité de la forme des graines_ n'a pas un impact significatif sur le prix de vente des fleurs produites par ces graines. Ceci étant la conclusion logique du résultat de l'analyse des variances réalisée sur la moyenne des 3 catégories de la régularité ($p.value=0.513$). 
+
+```{r,  fig.width=12, fig.height=16, fig.cap="Densité du prix au sein des différents groupes de graines (suite)"}
+a5 <- ggplot(sampl2)+
+  geom_point(aes(x = Poids, y = Prix, col = Intensité, shape = Couleur),fill = "white", size = 3)+
+  labs(subtitle = "Lien entre Prix de la fleur et Poids de la graine")+
+  annotate("text", 
+           label = "italic(R^2-adj)== 0.762",
+           parse = TRUE,
+           x = 0.5, y = 150)+
+  annotate("text", 
+           label = "italic(corr)== 0.873",
+           parse = TRUE,
+           x = 0.57, y = 140)
+
+
+a3+a5+plot_layout(nrow = 2, ncol = 1)
+```
+
+
+\newpage
+* **Poids des graines**
+
+```{r}
+linear2 <- summary(lm(Prix~Poids, sampl2)) 
+```
+
+Au niveau de ce dernier, le nuage de point traduit un lien linéaire entre le prix d'une fleur et le poids de la graine ayant donnée cette fleur. En effet, le $R^2_{adj}$ de la régression linéaire donne _`r round(linear2$adj.r.squared,3)`_ et le coefficient de corrélation linéaire entre ces deux variables est _`r round(cor(sampl2$Prix, sampl2$Poids),3)`_ (une corrélation positive).
+
+Le coefficient de corrélation étant positif, on peut donc conclure que plus le poids de la graine est élévé, plus cher seraient vendus les fleurs qu'elle donnera. 
+
+Aussi en analysant plus en détails le scatterplot, on remarque que les graines d'intensité **5** et **4** donnent des fleurs dont les prix de vente sont élévés. Dans ce groupe, les graines d'intensité **1** sont les graines donnant des fleurs dont les prix de vente sont les plus bas. 
+
+```{r, eval=FALSE}
+lien <- lm(Prix~Couleur*Régularité*Intensité*Poids, sampl2)
+```
+
+```{r, eval=FALSE}
+summary(lien)
+```
+
+# Estimation des paramètres de la population
+
+Dans cette section, nous nous focaliserons sur l'estimation des paramètres du prix des fleurs produites par nos graines sélectionnées. Cette estimation se basera principalement sur les données recueillies sur l'échantillon_2.
+
+En effet, dans les sections précédentes, nous avons étudié nos deux échantillons et avons émis des conclusions sur lesdits échantilons tout en comparant les différents paramètres obtenus sur chacun des échantillons.
+
+
+## Estimation des paramètres et redressement
+
+```{r post_strat, warning=FALSE}
+plan_sonda <- svydesign(ids = ~1, strata = ~Intensité, fpc =~sample2$Prob , data = sampl2)
+```
+
+
+```{r}
+sampl2p <- sampl1
+sampl2p$Prob <- nrow(sampl1)/nrow(data)
+plan_sonda2 <- svydesign(ids = ~1, strata = ~Intensité, fpc =~sampl2p$Prob  , data = sampl1)
+```
+
+
+```{r, eval=FALSE}
+plan_sonda
+```
+
+
+```{r, eval = FALSE}
+svymean(~Prix, design = plan_sonda2, deff = TRUE)
+```
+
+
+```{r, eval=FALSE}
+svytotal(~Prix, design = plan_sonda2, deff = TRUE)
+```
+
+
+```{r, eval= FALSE}
+svytotal(~Prix, design = poststrata, deff = TRUE)
+```
+
+
+
+```{r}
+Effectifs <- data.frame(
+"Intensité" = 1:5,
+"Freq" = as.numeric(table(data_reste2$Intensité))
+)
+
+
+poststrata <- postStratify(
+design = plan_sonda,
+strata = ~Intensité, population = Effectifs
+)
+
+```
+
+```{r}
+Effectifs2 <- data.frame(
+"Intensité" = 1:5,
+"Freq" = as.numeric(table(data$Intensité))
+)
+
+
+poststrata2 <- postStratify(
+design = plan_sonda2,
+strata = ~Intensité, population = Effectifs2
+)
+```
+
+
+
+```{r, eval=FALSE}
+svymean(~Prix, design = poststrata2, deff = TRUE)
+```
+
+
+```{r, eval=FALSE}
+svymean(~Prix, design = poststrata, deff = TRUE)
+```
+
+```{r, eval=FALSE}
+svytotal(~Prix, design = poststrata, deff = TRUE)
+```
+
+
+
+```{r, eval=FALSE}
+$\widehat{\mu} =$ `r round(sum((xtabs(~Intensité, data )/121346)*aggregate(Prix~Intensité, data = sampl2, FUN = mean)[,2]),2)`
+
+
+$\widehat{Var}(\widehat{\mu}) =$ `r round(((sum((xtabs(~Intensité, data )/121346)*aggregate(Prix~Intensité, data = sampl2, FUN = sd)[,2])^2)/1743) - (sum((xtabs(~Intensité, data )/121346)*(aggregate(Prix~Intensité, data = sampl2, FUN = sd)[,2])^2)/121346),3)`
+```
+
+
+Rappelons que notre Echantillon_2 est issu d'une _**stratification optimale**_ de notre base de donnée de $N = 121 346$ graines en fonction de _**l'intensité des couleurs**_ desdites graines. Et aussi, notre variable d'interêt $Y$ est le prix de la fleur. C'est sur cette dernière que sera focalisée nos estimations.
+
+### Estimation des paramètres
+
+Dans le tableau ci-dessous, sont résumés les paramètres de nos cinq strates.
+
+|Intensité|1 |2 |3 |4  |5 |       |
+|--|--:|--:|--:|--:|--:|-----|
+|$N_h$|3621  |10980 |27308|31057|48380 |   $N = 121346$ |
+|$n_h$|`r nrow(intensity1)`    |`r nrow(intensity2)`   |`r nrow(intensity3)`  |`r nrow(intensity4)`  |`r nrow(intensity5)`   |  $n =$ `r nrow(sampl2)`  |
+|$f_h$    |`r round(nrow(intensity1)/3621,4)`   |`r round(nrow(intensity2)/10980,4)`  |`r round(nrow(intensity3)/27308,4)`  |`r round(nrow(intensity4)/31057,4)`  |`r round(nrow(intensity5)/48380,4)`|   $f =$ `r round(dim(sampl2)[1] / 121346,4)` |
+|$\overline{y}_h$  |`r round(mean(intensity1$Prix),3)`|`r round(mean(intensity2$Prix),3)`|`r round(mean(intensity3$Prix),3)`|`r round(mean(intensity4$Prix),3)`|`r round(mean(intensity5$Prix),3)`|    |
+|$\widehat{Var}(\overline{y}_h)$  |`r round((sd(intensity1$Prix)/sqrt(26))^2,3)`|`r round((sd(intensity2$Prix)/sqrt(138))^2,3)`|`r round((sd(intensity3$Prix)/sqrt(353))^2,3)`|`r round((sd(intensity4$Prix)/sqrt(442))^2,3)`|`r round((sd(intensity5$Prix)/sqrt(791))^2,3)`|     |
+|$s_{h;corr}$  |`r round(sd(intensity1$Prix),3)`|`r round(sd(intensity2$Prix),3)`|`r round(sd(intensity3$Prix),3)`|`r round(sd(intensity4$Prix),3)`|`r round(sd(intensity5$Prix),3)`|    |
+: Paramètres de Echantillon_2 et estimation 
+
+Ainsi donc avec notre stratégie de sondage, nous avons une estimation du prix moyen de vente des fleurs qui s'éleverait à **`r round(svymean(~Prix, design = plan_sonda, deff = TRUE)[1],2)` euros**  avec une variance estimée de **`r round(0.485**2,3)` euros** . 
+
+Ainsi donc avec un niveau de confiance de 95%, on est sûr que toute estimation du prix moyen des fleurs à partir d'un échantillon sera dans l'intervalle : **[`r round(47.31 - 1.96*0.485,2)`, `r round(47.31 + 1.96*0.485,2)`]**
+
+Retenons que ce prix est bien l'estimation au niveau global. Au niveau des diverses intensités des couleurs des graines, bien entendu, nous avons des disparités du prix des fleurs et donc on est tenté de construire un intervalle de confiance à 95% pour chacune de ces catégories. Cette information est résumée dans le tableau suivant:
+
+\newpage
+
+|Intensité|1 |2 |3 |4  |5 |
+|----|----:|----:|----:|----:|----:|
+|$\widehat{\mu}_h$  |`r round(mean(intensity1$Prix),3)`|`r round(mean(intensity2$Prix),3)`|`r round(mean(intensity3$Prix),3)`|`r round(mean(intensity4$Prix),3)`|`r round(mean(intensity5$Prix),3)`|
+|$\widehat{Var}(\widehat{\mu}_h)$  |`r round((1-(26/3621))*(sd(intensity1$Prix)^2/26),3)`|`r round((1-(138/10980))*(sd(intensity2$Prix)^2/138),3)`|`r round((1-(353/27308))*(sd(intensity3$Prix)^2/353),3)`|`r round((1-(442/31057))*(sd(intensity4$Prix)^2/442),3)`|`r round((1-(791/48380))*(sd(intensity5$Prix)^2/791),3)`|
+|$IC_{\mu_h}(95\%)$| **[`r round(44.567 - 1.96*sqrt(10.458),2)`, `r round(44.567 + 1.96*sqrt(10.458),2)`]**    | **[`r round(40.847 - 1.96*sqrt(1.379),2)`, `r round(40.847 + 1.96*sqrt(1.379),2)`]**|**[`r round(42.788 - 1.96*sqrt(0.66),2)`, `r round(42.788 + 1.96*sqrt(0.66),2)`]** |**[`r round(48.361 - 1.96*sqrt(0.854),2)`, `r round(48.361 + 1.96*sqrt(0.854),2)`]**  |**[`r round(49.674 - 1.96*sqrt(0.635),2)`, `r round(49.674 + 1.96*sqrt(0.635),2)`]** |
+:Estimation des paramètres des strates et IC à 95% 
+
+### Redressement des estimations
+
+Ayant à disposition, la répartition de l'intensité des couleurs des graines au sein de la population, il est donc avantageux d'effectuer un calage de nos estimations pour une meilleure estimation. Bien évidemment une stratification optimale nous permet d'avoir un estimateur efficace par rapport a celui d'un PESR, mais un meilleur estimateur calé sur les données de la population serait idéale. Ainsi, en réalisant le redressement par post-stratification, on obtient un prix moyen des fleurs de **`r round(svymean(~Prix, design = poststrata, deff = TRUE)[1],2)`** euros et un écart-type de **0.472** euros. Soit donc un intervalle de confiance à 95% de : **[`r round(46.94 - 1.96*sqrt(0.472),2)`, `r round(46.94 + 1.96*sqrt(0.472),2)`]**
+
+
+## Stratégie de maximisation de profit et bénéfice attendu
+
+Il est queston ici d'étudier la stratégie, au vue de nos résultats, qui permettrait d'avoir un profit maximal. 
+
+### Stratégie de maximisation de profit
+
+A la lumière des analyses précédentes, il apparait évident que pour maximiser le profit pouvant être généré par cette activité d'horticulture, les ziroboudons ont intérêt à choisir prioritairement les graines de couleur **Jaune** et dont l'intensité de la couleur est dans les catégories **4** et **5**. 
+
+```{r}
+graines_jaunes <- subset(sampl2, Couleur == "Jaune" & (Intensité == "4" | Intensité == "5") )
+```
+
+En effet, le prix moyen des fleurs produites par les graines de ce sous-groupe (graines de couleurs **jaunes** et d'intensité **4** ou **5**) est estimé à **`r round(mean(graines_jaunes$Prix),2)`** euros avec un écart-type de **`r round(sd(graines_jaunes$Prix),2)`** euros. 
+
+
+```{r, eval=FALSE}
+quantile(graines_jaunes$Prix)
+```
+
+
+```{r, eval=FALSE}
+mean(graines_jaunes$Prix)
+```
+
+```{r, eval=FALSE}
+sd(graines_jaunes$Prix)
+```
+
+
+
+```{r, eval=FALSE}
+sum(xtabs(~Couleur, data)*c(6,7,8))
+```
+
+```{r, eval=FALSE}
+5677342 - 842199
+```
+
+
+### Bénéfice attendu lors l'achat de toutes les graines disponibles
+
+Aussi, dans le cas où les ziroboudons achetèrent tout le stock de graines sans contrainte de budget, le profit auquel ils peuvent prétendre, _ceteris paribus_, est évalué à $5\ 677\ 342$ euros avec un ecart-type de $57\ 076$ euros. A ce montant viendra bien évidemment en déduction le coût de l'achat de graines. Le coût d'achat de l'ensemble des graines s'élève à $842\ 199$ euros. Ainsi, le gain espéré en achetant toutes les graines serait de $4\ 835\ 143$ euros. 
+
+
+# Limite de notre stratégie et recommandations
+
+Au vue des analyses précédentes, nous avons conclu que le prix de vente des fleurs restent fortement lié à l'intensité de la couleur des graines. Ceci, nous a conduit à réaliser une stratification optimale en fonction de cette caractéristique pour construire notre second échantillon. Certes, une stratification nous donnerait des estimations avec les variances les plus faible, mais ces estimations seront-elles les meilleures dans notre cas présent ?? 
+
+En effet, l'étude de l'effet de sondage de notre stratégie d'échantillonnage laisse paraitre d'une PESR aurait donné de meilleure variance ($Deff = 1.02$). Cependant, une fois nos estimations redressées, cet effet de sondage passe à $0.99$, soit une _presque égalité_ avec une PESR. Ainsi, gardons à l'esprit que le but viser lors de la sélection du second échantillon était une minimisation de la variance des prix. Une première limite de cette approche est l'utilisation de l'estimation des variances (puisque nous ne disposons pas des vraies variances). Ainsi, une stratification proportionnelle, avec l'intensité de la couleur de la graines comme variable de stratification, aurait peut être donnée de meilleures estimations avec un meilleur effet de sondage. 
+
+
+# \centering Conclusion{-}
+
+De l'ensemble des informations recueillies, nous avons pu voir que les variables (couleur des graines, intensité de la couleur et régularité des graines) qui caractérisent la qualité des graines sont indépendantes les unes des autres. Cependant, le prix de vente des fleurs produites (avec un prix moyen de `r 46.94` euros et un intervalle de confiance à 95% de [`r round(46.94 - 1.96*sqrt(0.472),2)`, `r round(46.94 + 1.96*sqrt(0.472),2)`]) restent fortement dépendant de l'intensité de la couleur des graines. Nous avons également que les graines de couleur de _jaunes_ et d'intensité _4_ ou _5_ sont les graines produisant des fleurs vendues plus chères ( 52.88 euros en moyenne et un écart-type de 23.76 euros); et donc se concentrer sur lesdites graines permettrait d'avoir bon profit. Toutefois, disposé uniquement des fleurs de couleurs jaunes dans son magasin, limiterait la diversité des clients, soit donc un manque en termes de diversité de couleurs de graines et de clients potentiels. 
+

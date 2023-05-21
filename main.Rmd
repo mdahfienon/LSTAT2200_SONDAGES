@@ -1,0 +1,50 @@
+---
+title: "| ![](UCLouvain - ecole-statistique.jpg){height=3in, width=3in}           \\hspace{2.1in}  ![](logo_fac_scien.png){height=0.7in, width=1.2in} \\vspace{1.1in} \n\\hrulefill \\vspace{0.2in} \n**LSTAT2200 ~ ECHANTILLONNAGE & SONDAGE** \n\n \\hrulefill \\vspace{1.2in}   \n\n  **~  Rapport Du Projet Final  ~** \n  \\vspace{0.8in} "
+#subtitle: ""
+author: 
+- " **Mathias Dah Fienon** - _noma : 04452100_ - DATS2M \\vspace{1.3in}"
+date: "Année Académique : **2021-2022**"
+output: 
+  pdf_document: 
+    number_sections: yes
+    toc_depth: 7
+header-includes:
+- \usepackage{fancyhdr}
+- \usepackage{graphicx}
+- \pagestyle{fancy}
+- \setlength{\headheight}{30pt}
+- \fancyfoot[L]{LSTAT2200 | \textit{Projet}  }
+- \fancyhead[L]{\includegraphics[height=12mm,width=40mm]{UCLouvain - ecole-statistique.jpg}}
+- \fancyhead[R]{}
+- \fancyfoot[C]{\thepage}
+- \fancyfoot[R]{\textit{Mathias Dah Fienon}}
+- \usepackage{float}
+---
+
+```{=tex}
+\pagenumbering{gobble}
+\hspace{2.1in}
+```
+
+
+
+```{=tex}
+\begin{center}
+\begin{Large}
+
+Rapport Du Projet Final -- LSTAT2200 : Echantillonnage et Sondage
+
+\end{Large} 
+ \end{center}
+```
+
+
+
+```{=tex}
+\hspace{2.1in}
+\tableofcontents
+```
+\pagenumbering{arabic}
+
+```{r, child=" sampling_proj.Rmd"}
+```
